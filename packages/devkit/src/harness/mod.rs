@@ -6,7 +6,7 @@ use crate::harness::scenarios::{scenario_source, ScenarioFixture, SCENARIO_NAMES
 pub enum HarnessError {
     UnknownScenario { requested: String },
     MalformedScenario {
-        scenario: &'static str,
+        scenario: String,
         message: String,
     },
 }
@@ -26,12 +26,12 @@ impl std::fmt::Display for HarnessError {
 
 impl std::error::Error for HarnessError {}
 
-pub fn load_scenario(name: &'static str) -> Result<ScenarioFixture, HarnessError> {
+pub fn load_scenario(name: &str) -> Result<ScenarioFixture, HarnessError> {
     let source = scenario_source(name).ok_or_else(|| HarnessError::UnknownScenario {
         requested: name.to_string(),
     })?;
     serde_json::from_str(source).map_err(|err| HarnessError::MalformedScenario {
-        scenario: name,
+        scenario: name.to_string(),
         message: err.to_string(),
     })
 }
@@ -43,7 +43,7 @@ pub fn load_all() -> Result<Vec<ScenarioFixture>, HarnessError> {
         .collect()
 }
 
-pub fn scenario_names() -> &'static [&'static str; 5] {
+pub fn scenario_names() -> &'static [&'static str] {
     &SCENARIO_NAMES
 }
 
@@ -69,6 +69,13 @@ mod tests {
     }
 
     #[test]
+    fn loading_a_scenario_with_an_owned_name_succeeds() {
+        let name = String::from("congestion");
+        let scenario = load_scenario(&name).expect("scenario");
+        assert_eq!(scenario.name, name);
+    }
+
+    #[test]
     fn every_scenario_loads() {
         assert_eq!(load_all().expect("all scenarios load").len(), SCENARIO_NAMES.len());
     }
@@ -89,7 +96,7 @@ mod tests {
         );
         assert_eq!(
             HarnessError::MalformedScenario {
-                scenario: "spike",
+                scenario: "spike".to_string(),
                 message: "EOF while parsing".to_string(),
             }
             .to_string(),
